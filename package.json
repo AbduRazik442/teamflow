@@ -1,0 +1,17 @@
+
+{
+  "name": "teamflow",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A production-oriented team collaboration SaaS built with MERN",
+  "scripts": {
+    "dev": "concurrently -n API,WEB -c blue,green \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "npm --prefix apps/api run dev",
+    "dev:web": "npm --prefix apps/web run dev",
+    "build": "npm --prefix apps/web run build",
+    "start": "npm --prefix apps/api start"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}
