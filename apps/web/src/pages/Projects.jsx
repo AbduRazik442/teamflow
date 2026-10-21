@@ -1,6 +1,8 @@
-
 import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "../lib/api.js";
+import LoadingSkeleton from "../components/ui/LoadingSkeleton.jsx";
+import ErrorState from "../components/ui/ErrorState.jsx";
+import EmptyState from "../components/ui/EmptyState.jsx";
 
 const emptyForm = {
     name: "",
@@ -27,25 +29,22 @@ export default function Projects() {
     const [error, setError] = useState("");
     const [notice, setNotice] = useState("");
     const [workspaces, setWorkspaces] = useState([]);
+    const [loadingProjects, setLoadingProjects] = useState(true);
+    const [projectsError, setProjectsError] = useState("");
 
     const loadProjects = useCallback(async () => {
-        setLoading(true);
-        setError("");
-        const [projectData, workspaceData] = await Promise.all([
-            apiRequest("/api/projects"),
-            apiRequest("/api/workspaces"),
-        ]);
-
-        setProjects(projectData.projects ?? []);
-        setWorkspaces(workspaceData.workspaces ?? []);
+        setLoadingProjects(true);
+        setProjectsError("");
 
         try {
             const data = await apiRequest("/api/projects");
-            setProjects(data.projects);
-        } catch (err) {
-            setError(err.message || "Could not load projects.");
+            setProjects(data.projects ?? []);
+        } catch (error) {
+            setProjectsError(
+                error.message || "Unable to load your projects."
+            );
         } finally {
-            setLoading(false);
+            setLoadingProjects(false);
         }
     }, []);
 
@@ -272,19 +271,23 @@ export default function Projects() {
                 </form>
             )}
 
-            {loading ? (
-                <div className="panel projects-empty">Loading projects...</div>
-            ) : projects.length === 0 ? (
-                <div className="panel projects-empty">
-                    <div className="placeholder-icon">◫</div>
-                    <h2>No projects yet</h2>
-                    <p className="muted">
-                        Create your first project to get started.
-                    </p>
-                    <button className="primary-action" onClick={startCreate}>
-                        Create your first project
-                    </button>
+            {loadingProjects ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+                    <LoadingSkeleton lines={4} />
                 </div>
+            ) : projectsError ? (
+                <ErrorState
+                    title="Couldn't load projects"
+                    message={projectsError}
+                    onRetry={loadProjects}
+                />
+            ) : projects.length === 0 ? (
+                <EmptyState
+                    title="No projects yet"
+                    description="Create a project to organize tasks and track your team's progress."
+                    actionLabel="Create project"
+                    onAction={() => setIsCreateModalOpen(true)}
+                />
             ) : (
                 <div className="projects-card-grid">
                     {projects.map((project) => (
