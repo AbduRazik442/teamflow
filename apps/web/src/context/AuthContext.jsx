@@ -1,3 +1,4 @@
+
 import {
   createContext,
   useCallback,
@@ -19,11 +20,9 @@ export function AuthProvider({ children }) {
       const data = await apiRequest("/api/auth/me");
       setUser(data.user);
       return data.user;
-
     } catch {
       setUser(null);
       return null;
-      
     } finally {
       setLoading(false);
     }
@@ -33,23 +32,46 @@ export function AuthProvider({ children }) {
     refreshUser();
   }, [refreshUser]);
 
+  useEffect(() => {
+    function handleUnauthorized() {
+      setUser(null);
+      setLoading(false);
+    }
+
+    window.addEventListener(
+      "teamflow:unauthorized",
+      handleUnauthorized
+    );
+
+    return () => {
+      window.removeEventListener(
+        "teamflow:unauthorized",
+        handleUnauthorized
+      );
+    };
+  }, []);
+
   async function login(credentials) {
     const data = await apiRequest("/api/auth/login", {
       method: "POST",
-      body: JSON.stringify(credentials),
+      body: credentials,
     });
 
     setUser(data.user);
+    setLoading(false);
+
     return data.user;
   }
 
   async function register(details) {
     const data = await apiRequest("/api/auth/register", {
       method: "POST",
-      body: JSON.stringify(details),
+      body: details,
     });
 
     setUser(data.user);
+    setLoading(false);
+
     return data.user;
   }
 
@@ -60,12 +82,20 @@ export function AuthProvider({ children }) {
       });
     } finally {
       setUser(null);
+      setLoading(false);
     }
   }
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, register, logout, refreshUser }}
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        logout,
+        refreshUser,
+      }}
     >
       {children}
     </AuthContext.Provider>
