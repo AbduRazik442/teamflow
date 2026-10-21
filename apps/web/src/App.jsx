@@ -15,6 +15,7 @@ import Dashboard from "./pages/Dashboard.jsx";
 import WorkspacePage from "./pages/WorkspacePage.jsx";
 import Projects from "./pages/Projects.jsx";
 import Tasks from "./pages/Tasks.jsx";
+import Workspaces from "./pages/Workspaces.jsx";
 
 import "./index.css";
 
@@ -33,6 +34,7 @@ function App() {
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/team" element={<WorkspacePage />} />
               <Route path="/settings" element={<WorkspacePage />} />
+              <Route path="/workspaces" element={<Workspaces />} />
             </Route>
           </Route>
 

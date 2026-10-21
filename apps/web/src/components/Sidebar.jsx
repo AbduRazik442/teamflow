@@ -5,6 +5,7 @@ const navigation = [
   { label: "Projects", path: "/projects", icon: "◫" },
   { label: "My Tasks", path: "/tasks", icon: "✓" },
   { label: "Team", path: "/team", icon: "♧" },
+  { label: "Workspaces", path: "/workspaces", icon: "▤" },
 ];
 
 export default function Sidebar({ open, onClose }) {

@@ -1837,3 +1837,149 @@ a {
     flex-wrap: wrap;
   }
 }
+
+
+/* TeamFlow - Milestone 10: Workspaces */
+
+.workspace-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 18px;
+}
+
+.workspace-main {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.workspace-panel {
+  min-width: 0;
+}
+
+.workspace-list {
+  display: grid;
+}
+
+.workspace-list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 13px 0;
+  border: 0;
+  border-bottom: 1px solid #f0f1f6;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+button.workspace-list-item {
+  cursor: pointer;
+}
+
+.workspace-list-item:last-child {
+  border-bottom: 0;
+}
+
+button.workspace-list-item:hover,
+button.workspace-list-item.selected {
+  color: #5146df;
+}
+
+.workspace-avatar {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #efedff;
+  color: #6356d9;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.workspace-list-info {
+  display: grid;
+  flex: 1;
+  gap: 5px;
+  min-width: 0;
+}
+
+.workspace-list-info strong {
+  color: #30374b;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.workspace-list-info small {
+  color: #9299aa;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.workspace-role {
+  flex-shrink: 0;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #f0f1f6;
+  color: #667085;
+  font-size: 10px;
+  text-transform: capitalize;
+}
+
+.workspace-invitation-result {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #dfe3ee;
+  border-radius: 10px;
+  background: #fafaff;
+  overflow-wrap: anywhere;
+}
+
+.workspace-invitation-result > strong {
+  color: #30374b;
+  font-size: 13px;
+}
+
+.workspace-invitation-result p {
+  margin: 0;
+  color: #737c90;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.workspace-invitation-result code {
+  display: block;
+  padding: 10px;
+  border-radius: 7px;
+  background: #efedff;
+  color: #5146df;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.workspace-invitation-result button {
+  justify-self: start;
+}
+
+@media (max-width: 900px) {
+  .workspace-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .workspace-list-item {
+    gap: 9px;
+  }
+
+  .workspace-avatar {
+    width: 34px;
+    height: 34px;
+  }
+}
