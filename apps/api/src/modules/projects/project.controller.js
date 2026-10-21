@@ -1,6 +1,8 @@
 
 import mongoose from "mongoose";
 import Project from "./project.model.js";
+import Membership from "../workspaces/membership.model.js";
+import { canManageProject } from "../workspaces/workspaceAccess.js";
 
 function validateProjectId(req, res) {
   if (!mongoose.isValidObjectId(req.params.id)) {
@@ -14,10 +16,44 @@ function validateProjectId(req, res) {
   return true;
 }
 
-// GET /api/projects
+async function findAccessibleProject(projectId, userId) {
+  const memberships = await Membership.find({
+    user: userId,
+    status: "active",
+  })
+    .select("workspace")
+    .lean();
+
+  const workspaceIds = memberships.map((item) => item.workspace);
+
+  return Project.findOne({
+    _id: projectId,
+    $or: [
+      { owner: userId, workspace: null },
+      { owner: userId, workspace: { $exists: false } },
+      { workspace: { $in: workspaceIds } },
+    ],
+  });
+}
+
 export async function getProjects(req, res, next) {
   try {
-    const projects = await Project.find({ owner: req.userId })
+    const memberships = await Membership.find({
+      user: req.userId,
+      status: "active",
+    })
+      .select("workspace")
+      .lean();
+
+    const workspaceIds = memberships.map((item) => item.workspace);
+
+    const projects = await Project.find({
+      $or: [
+        { owner: req.userId, workspace: null },
+        { owner: req.userId, workspace: { $exists: false } },
+        { workspace: { $in: workspaceIds } },
+      ],
+    })
       .sort({ createdAt: -1 })
       .lean();
 
@@ -31,15 +67,14 @@ export async function getProjects(req, res, next) {
   }
 }
 
-// GET /api/projects/:id
 export async function getProject(req, res, next) {
   try {
     if (!validateProjectId(req, res)) return;
 
-    const project = await Project.findOne({
-      _id: req.params.id,
-      owner: req.userId,
-    }).lean();
+    const project = await findAccessibleProject(
+      req.params.id,
+      req.userId
+    );
 
     if (!project) {
       return res.status(404).json({
@@ -57,10 +92,35 @@ export async function getProject(req, res, next) {
   }
 }
 
-// POST /api/projects
 export async function createProject(req, res, next) {
   try {
-    const { name, description, status, priority } = req.body;
+    const { name, description, status, priority, workspace } = req.body;
+
+    let workspaceId = null;
+
+    if (workspace !== undefined && workspace !== null && workspace !== "") {
+      if (!mongoose.isValidObjectId(workspace)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid workspace ID.",
+        });
+      }
+
+      const membership = await Membership.findOne({
+        workspace,
+        user: req.userId,
+        status: "active",
+      });
+
+      if (!membership) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not an active member of this workspace.",
+        });
+      }
+
+      workspaceId = workspace;
+    }
 
     const project = await Project.create({
       name: name.trim(),
@@ -68,6 +128,7 @@ export async function createProject(req, res, next) {
       status: status ?? "planning",
       priority: priority ?? "medium",
       owner: req.userId,
+      workspace: workspaceId,
     });
 
     return res.status(201).json({
@@ -80,36 +141,13 @@ export async function createProject(req, res, next) {
   }
 }
 
-// PATCH /api/projects/:id
 export async function updateProject(req, res, next) {
   try {
     if (!validateProjectId(req, res)) return;
 
-    const updates = {};
-    const { name, description, status, priority } = req.body;
-
-    if (name !== undefined) updates.name = name.trim();
-    if (description !== undefined) updates.description = description.trim();
-    if (status !== undefined) updates.status = status;
-    if (priority !== undefined) updates.priority = priority;
-
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Provide at least one field to update.",
-      });
-    }
-
-    const project = await Project.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        owner: req.userId,
-      },
-      { $set: updates },
-      {
-        new: true,
-        runValidators: true,
-      }
+    const project = await findAccessibleProject(
+      req.params.id,
+      req.userId
     );
 
     if (!project) {
@@ -118,6 +156,22 @@ export async function updateProject(req, res, next) {
         message: "Project not found.",
       });
     }
+
+    if (!(await canManageProject(project, req.userId))) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to update this project.",
+      });
+    }
+
+    const { name, description, status, priority } = req.body;
+
+    if (name !== undefined) project.name = name.trim();
+    if (description !== undefined) project.description = description.trim();
+    if (status !== undefined) project.status = status;
+    if (priority !== undefined) project.priority = priority;
+
+    await project.save();
 
     return res.status(200).json({
       success: true,
@@ -129,15 +183,14 @@ export async function updateProject(req, res, next) {
   }
 }
 
-// DELETE /api/projects/:id
 export async function deleteProject(req, res, next) {
   try {
     if (!validateProjectId(req, res)) return;
 
-    const project = await Project.findOneAndDelete({
-      _id: req.params.id,
-      owner: req.userId,
-    });
+    const project = await findAccessibleProject(
+      req.params.id,
+      req.userId
+    );
 
     if (!project) {
       return res.status(404).json({
@@ -145,6 +198,15 @@ export async function deleteProject(req, res, next) {
         message: "Project not found.",
       });
     }
+
+    if (!(await canManageProject(project, req.userId))) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to delete this project.",
+      });
+    }
+
+    await Project.deleteOne({ _id: project._id });
 
     return res.status(200).json({
       success: true,
