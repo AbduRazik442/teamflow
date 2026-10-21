@@ -19,9 +19,11 @@ export function AuthProvider({ children }) {
       const data = await apiRequest("/api/auth/me");
       setUser(data.user);
       return data.user;
+
     } catch {
       setUser(null);
       return null;
+      
     } finally {
       setLoading(false);
     }
