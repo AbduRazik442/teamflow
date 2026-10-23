@@ -89,11 +89,20 @@ async function getVisibleProjectIds(userId) {
     return projects.map((project) => project._id);
 }
 
+
 export async function getTasks(req, res, next) {
     try {
+        // 1. Get projects accessible to the authenticated user
         const projectIds = await getVisibleProjectIds(req.userId);
-        const filter = { project: { $in: projectIds } };
 
+        // 2. Base filter: only tasks from accessible projects
+        const filter = {
+            project: {
+                $in: projectIds,
+            },
+        };
+
+        // 3. Filter by project ID
         if (req.query.projectId) {
             if (!validId(req.query.projectId)) {
                 return res.status(400).json({
@@ -102,15 +111,34 @@ export async function getTasks(req, res, next) {
                 });
             }
 
+            const requestedProjectId = req.query.projectId;
+
+            const accessibleProjectIds = projectIds.filter(
+                (id) => id.toString() === requestedProjectId
+            );
+
+            // Prevent accessing projects outside the user's permissions
+            if (accessibleProjectIds.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Project not found.",
+                });
+            }
+
             filter.project = {
-                $in: projectIds.filter(
-                    (id) => id.toString() === req.query.projectId
-                ),
+                $in: accessibleProjectIds,
             };
         }
 
+        // 4. Filter by status
         if (req.query.status) {
-            if (!["todo", "in-progress", "completed"].includes(req.query.status)) {
+            const allowedStatuses = [
+                "todo",
+                "in-progress",
+                "completed",
+            ];
+
+            if (!allowedStatuses.includes(req.query.status)) {
                 return res.status(400).json({
                     success: false,
                     message: "Invalid task status.",
@@ -120,15 +148,117 @@ export async function getTasks(req, res, next) {
             filter.status = req.query.status;
         }
 
+        // 5. Filter by priority
+        if (req.query.priority) {
+            const allowedPriorities = [
+                "low",
+                "medium",
+                "high",
+            ];
+
+            if (!allowedPriorities.includes(req.query.priority)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid task priority.",
+                });
+            }
+
+            filter.priority = req.query.priority;
+        }
+
+        // 6. Search by task title or description
+        if (req.query.search) {
+            const search = req.query.search.trim();
+
+            if (search.length > 100) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Search cannot exceed 100 characters.",
+                });
+            }
+
+            if (search) {
+                // Escape regex characters to prevent unintended patterns
+                const escapedSearch = search.replace(
+                    /[.*+?^${}()|[\]\\]/g,
+                    "\\$&"
+                );
+
+                filter.$or = [
+                    {
+                        title: {
+                            $regex: escapedSearch,
+                            $options: "i",
+                        },
+                    },
+                    {
+                        description: {
+                            $regex: escapedSearch,
+                            $options: "i",
+                        },
+                    },
+                ];
+            }
+        }
+
+        // 7. Pagination
+        const page = Math.max(
+            1,
+            Number.parseInt(req.query.page, 10) || 1
+        );
+
+        const limit = Math.min(
+            100,
+            Math.max(
+                1,
+                Number.parseInt(req.query.limit, 10) || 10
+            )
+        );
+
+        const skip = (page - 1) * limit;
+
+        // 8. Sorting
+        const allowedSortFields = [
+            "createdAt",
+            "updatedAt",
+            "dueDate",
+            "priority",
+            "title",
+        ];
+
+        const sortBy = allowedSortFields.includes(req.query.sortBy)
+            ? req.query.sortBy
+            : "createdAt";
+
+        const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+
+        const sort = {
+            [sortBy]: sortOrder,
+            _id: sortOrder,
+        };
+
+        // 9. Get total matching tasks
+        const total = await Task.countDocuments(filter);
+
+        // 10. Fetch paginated tasks
         const tasks = await Task.find(filter)
             .populate("project", "name workspace owner")
             .populate("assignedTo", "name email")
-            .sort({ createdAt: -1 })
+            .sort(sort)
+            .skip(skip)
+            .limit(limit)
             .lean();
 
+        // 11. Return response
         return res.status(200).json({
             success: true,
             count: tasks.length,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
             tasks,
         });
     } catch (error) {

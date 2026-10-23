@@ -3,6 +3,7 @@ import { apiRequest } from "../lib/api.js";
 import LoadingSkeleton from "../components/ui/LoadingSkeleton.jsx";
 import ErrorState from "../components/ui/ErrorState.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
+import { useToast } from "../context/ToastContext.jsx";
 
 const emptyForm = {
     name: "",
@@ -31,6 +32,7 @@ export default function Projects() {
     const [workspaces, setWorkspaces] = useState([]);
     const [loadingProjects, setLoadingProjects] = useState(true);
     const [projectsError, setProjectsError] = useState("");
+    const toast = useToast();
 
     const loadProjects = useCallback(async () => {
         setLoadingProjects(true);
@@ -87,12 +89,12 @@ export default function Projects() {
 
             const data = await apiRequest(endpoint, {
                 method: editingId ? "PATCH" : "POST",
-                body: JSON.stringify({
+                body: {
                     ...form,
                     name: form.name.trim(),
                     description: form.description.trim(),
                     workspace: form.workspace || null,
-                }),
+                },
             });
 
             if (editingId) {
@@ -102,16 +104,18 @@ export default function Projects() {
                     )
                 );
                 setNotice("Project updated successfully.");
+                toast.success("Project updated successfully.");
             } else {
                 setProjects((current) => [data.project, ...current]);
                 setNotice("Project created successfully.");
+                toast.success("Project created successfully.");
             }
 
             setShowForm(false);
             setForm(emptyForm);
             setEditingId(null);
         } catch (err) {
-            setError(err.message || "Could not save the project.");
+            toast.error(err.message || "Could not save the project.");
         } finally {
             setSaving(false);
         }
@@ -136,8 +140,9 @@ export default function Projects() {
                 current.filter((item) => item._id !== project._id)
             );
             setNotice("Project deleted successfully.");
+            toast.success("Project deleted successfully.");
         } catch (err) {
-            setError(err.message || "Could not delete the project.");
+            toast.error(err.message || "Could not delete the project.");
         }
     }
 

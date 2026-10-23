@@ -9,6 +9,7 @@ import {
   deleteTask,
 } from "./task.controller.js";
 import { validateTask } from "./task.validation.js";
+import { validateTaskQuery } from "./taskQuery.validation.js";
 
 const router = Router();
 
@@ -19,5 +20,6 @@ router.get("/:id", getTask);
 router.post("/", validateTask, createTask);
 router.patch("/:id", validateTask, updateTask);
 router.delete("/:id", deleteTask);
+router.get("/", validateTaskQuery, getTasks);
 
 export default router;
